@@ -1,0 +1,26 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html>
+	<head>
+	</head>
+	<body>
+		<style type="text/css">
+			#vertebrae {
+				list-style-type: none;
+				float: left;
+			}
+		</style>
+		<a href="{{ musicurl }}"><img src="{% static "vertebrae/vertebrae.jpg" %}"></a>
+		<ul id="vertebrae">
+			<li><a href="c1">C1 - Hello Backbone</a></li>
+			<li><a href="c2">C2 - To-Do List - Local Storage</a></li>
+			<li><a href="c3">C3 - To-Do List - Fake API (Not Done)</a></li>
+			<li><a href="c4">C4</a></li>
+			<li><a href="c5">C5</a></li>
+			<li><a href="c6">C6</a></li>
+			<li><a href="c7">C7</a></li>
+			<li><a href="c8">C8</a></li>
+		</ul>
+	</body>
+</html>

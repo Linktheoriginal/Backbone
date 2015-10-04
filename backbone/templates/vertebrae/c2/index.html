@@ -1,0 +1,253 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="{% static "vertebrae/jquery-1.11.3.js" %}"></script>
+		<script src="{% static "vertebrae/underscore-1.8.3.js" %}"></script>
+		<script src="{% static "vertebrae/backbone-1.2.3.js" %}"></script>
+		<script src="{% static "vertebrae/backbonelocalstorage-1.1.16.js" %}"></script>
+		<!-- ignore the bracket + percent symbol tags, used for Django, not related to backbone -->
+		<!-- this example is using local storage instead of a database - and requires the local storage library -->
+	</head>
+	<body>
+		<!-- Framework HTML for page- rendered on pageload. -->
+		<section id="todoapp">
+			<header id="header">
+				<h1>To-Do List - Local Storage</h1>
+				<input id="new-todo" placeholder="What needs to be done?" autofocus>
+			</header>
+			<section id="main">
+				<ul id="todo-list"></ul>
+			</section>
+			<section id="filters">
+				<ul>
+					<li><a href="#">All Items</a></li>
+					<li><a href="#/pending">Pending Items</a></li>
+					<li><a href="#/completed">Completed Items</a></li>
+				</ul>
+			</section>
+		</section>
+
+		<!-- script of type template?  this is common in JS template frameworks.  ignored by browser.  this section is called by ToDoApp.ToDoView() -->
+		<script type="text/template" id="item-template">
+			<div class="view">
+				<input class="toggle" type="checkbox" <%= completed ? 'checked' : '' %>>
+				<input class="edit label" value="<%-title%>">
+				<label class="label"><%-title%></label>
+				<button class="destroy">Remove</button>
+			</div>
+		</script>
+
+		<!-- these styles mostly hide/show the inputs/labels based on if we're editing.  The JS code below add/removes the editing classes. -->
+		<!-- we could do this entirely with inputs, not with labels, and disable/readonly the label ones instead, depending -->
+		<style type="text/css">
+			#todoapp ul {
+				list-style-type: none;
+			}
+			#todo-list input.edit {
+				display: none;
+			}
+			#todo-list .editing label {
+				display: none;
+			}
+			#todo-list .editing input.edit {
+				display: inline;
+			}
+			#todo-list .label {
+				width: 200px;
+				display: inline-block;
+			}
+		</style>
+
+		<script type="text/javascript">
+			//new app - we're going to extend some backbone classes
+			var ToDoApp = {};
+
+			/* DATA STUFF */
+
+				//first we extend a model to keep our data in
+				//this is a single to do list item, and if it's been checked
+				ToDoApp.ToDo = Backbone.Model.extend({
+					defaults: {
+						title: '',
+						completed: false
+					},
+					toggle: function() {
+						this.save({completed: !this.get('completed')})
+					}
+				});
+
+				//storing the models in a localstore (maintained by the browser) - this is what the extra library include is for
+				ToDoApp.ToDoList = Backbone.Collection.extend({
+					model: ToDoApp.ToDo,
+					localStorage: new Store("backbone-todo"),
+
+					//filters on the data, used for the router
+					completed: function() {
+						return this.filter(function(todo){
+							return todo.get('completed');
+						});
+					},
+					remaining: function() {
+						return this.without.apply(this, this.completed());
+					}
+				});
+
+				//init a var in our app with the data store
+				ToDoApp.list = new ToDoApp.ToDoList();
+
+			/* VIEW STUFF */
+
+				ToDoApp.ToDoView = Backbone.View.extend({
+					tagName: 'li',
+					//this tells the template system to wrap all the templates it draws with an li
+
+					template: _.template($('#item-template').html()),
+					//this, along with the template script above, lets us keep the templates in a new file if we want!
+
+					render: function() {
+						this.$el.html(this.template(this.model.toJSON()));
+						//this passes the model to the template and lets us just add fields to the model and then dump them wherever we want in the view
+
+						this.label = this.$('.edit');
+						//we only have one input here, the label.  Setting up a JS var to the dom element here lets us wire things up by only changing this function
+						//when the interface changes, as opposed to going through the code and editing every $('.edit') scattered everywhere.
+
+						return this;
+						//allow for chained calls
+					},
+					initialize: function() {
+						this.model.on('change', this.render, this);
+						this.model.on('destroy', this.remove, this);
+					},
+					events: {
+						'dblclick label' : 'edit',
+						'keypress .edit' : 'updateOnEnter',
+						'blur .edit' : 'close',
+						'click .toggle' : 'toggleCompleted',
+						'click .destroy': 'destroy'
+					},
+					edit: function() {
+						this.$el.addClass('editing');
+						this.label.focus();
+					},
+					close: function() {
+						var value = this.label.val().trim();
+						if(value) {
+							this.model.save({title: value});
+						}
+						this.$el.removeClass('editing');
+					},
+					updateOnEnter: function(event) {
+						if (event.which == 13) {
+							this.close();
+						}
+					},
+					toggleCompleted: function() {
+						this.model.toggle();
+					},
+					destroy: function() {
+						this.model.destroy();
+					}
+				});
+
+				//now we add a view that iteratively calls the ToDoView for each item
+				ToDoApp.ViewAll = Backbone.View.extend({
+					el: '#todoapp',
+					initialize: function(){
+						this.input = this.$('#new-todo');
+
+						//.list is the datastore we set up in the line above: ToDoApp.List = new ToDoApp.ToDoList();
+
+						ToDoApp.list.on('add', this.ToDoAddOne, this);
+						//when we add something, call ToDoAddOne - 
+
+						ToDoApp.list.on('reset', this.ToDoAddAll, this);
+						//when we reset the list, call ToDoAddAll
+
+						ToDoApp.list.fetch();
+						//Get the models from the data store
+					},
+					events: {
+						'keypress #new-todo': 'createToDoOnEnter'
+						//jQuery('#new-todo').on('keypress', function(){createToDoOnEnter();});
+					},
+					createToDoOnEnter: function(event) {
+						if ( event.which !== 13 || !this.input.val().trim() ) { // Enter is 13
+							return;
+						}
+						ToDoApp.list.create(this.newAttributes());
+						//this triggers the 'add' event we set up in initialize
+
+						this.input.val('');
+					},
+					ToDoAddOne: function(ToDo) {
+						var view = new ToDoApp.ToDoView({model: ToDo});
+						$('#todo-list').append(view.render().el);
+					},
+					ToDoAddAll: function() {
+						this.$('#todo-list').html('');
+
+						//this handles filters via the routers - if there's no routers, this function
+						//would just call ToDoApp.list.each(this.ToDoAddOne, this); to add all of the todos
+						switch(window.filter) {
+							case 'pending':
+								//underscore offers a cross-browser 'forEach' functionality
+								//ToDoApp.list.remaining() returns a list of uncompleted items
+								//the filter on completed is handled by the model
+								_.each(ToDoApp.list.remaining(), this.ToDoAddOne);
+								break;
+
+							case 'completed':
+								_.each(ToDoApp.list.completed(), this.ToDoAddOne);
+								break;
+
+							default:
+								ToDoApp.list.each(this.ToDoAddOne, this);
+								break;
+						}
+					},
+					newAttributes: function() {
+						//set up a new list item
+						return {
+							title: this.input.val().trim(),
+							completed: false
+						}
+					}
+				});
+			
+			/* ROUTER STUFF */
+
+				//using backbone routes, set up filters for completed/not completed.
+				ToDoApp.Router = Backbone.Router.extend({
+					routes: {
+						//This * is a 'splat' filter, so it will get ALL params passed in
+						//example: /#/param/param2 will pass in "param/param2" into the function
+						'*filter' : 'setFilter'
+					},
+					setFilter: function(params) {
+						window.filter = (params == null) ? '' : params.trim();
+						ToDoApp.list.trigger('reset');
+						//set a global var for the filter to use, call reset
+					}
+				});
+
+			/* INIT STUFF */
+
+				$(function() {
+					//load the view on pageload!
+					ToDoApp.listView = new ToDoApp.ViewAll();
+
+					//setup the router - have to do this after loading the view, because the initialization
+					//on the view sets up the 'reset' trigger - which is needed if the first page hit has a filter on it
+					//this would occur in the case that someone had bookmarked the pending list.
+					ToDoApp.routes = new ToDoApp.Router();
+					Backbone.history.start();
+				});
+
+		</script>
+	</body>
+</html>

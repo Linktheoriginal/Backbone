@@ -1,0 +1,35 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="{% static "vertebrae/jquery-1.11.3.js" %}"></script>
+		<script src="{% static "vertebrae/underscore-1.8.3.js" %}"></script>
+		<script src="{% static "vertebrae/backbone-1.2.3.js" %}"></script>
+		<!-- ignore the bracket + percent symbol tags, used for Django, not related to backbone -->
+	</head>
+	<body>
+		<div id="container"></div>
+		<script type="text/javascript">
+			var HelloWorldView = Backbone.View.extend({
+				el: "#container",
+				//el means element- where to draw this- this is a jQuery selector
+				template: _.template("<h3>Hello, <%=who%>!</h3>"),
+				//underscore template
+				initialize: function() {
+					this.render();
+				},
+				//function called when object created
+				render: function() {
+					this.$el.html(this.template({who: "World"}));
+					//underscore hard errors if a template variable isn't defined
+					//$el does the selector defined in el
+				}
+			});
+			var HelloWorld = new HelloWorldView();
+			//instantiate object - calls initialize, which calls render
+		</script>
+	</body>
+</html>

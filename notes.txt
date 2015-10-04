@@ -1,0 +1,11 @@
+Hard dependency on underscore.js
+Soft dependency on jQuery
+
+Templates - underscore.js uses <%= %> and <%- %> but we could use handlebars or mustache instead
+
+"Notice that BackboneJS is not a framework but a library. The difference is who is in control. Using a library YOU are in control, but using a framework there is an inversion of control: the framework calls you. Libraries give you a lot of flexibility, while frameworks have opinionated ways of doing things but can save you writing boilerplate code." AngularJS -> framework solution
+
+Things to investigate:
+	Swap Template Library for Handlebars/Mustache
+	Swap Local Storage for API
+	Build Order Form
