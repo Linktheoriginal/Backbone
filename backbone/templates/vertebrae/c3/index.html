@@ -70,12 +70,12 @@
 				//first we extend a model to keep our data in
 				//this is a single to do list item, and if it's been checked
 				ToDoApp.ToDo = Backbone.Model.extend({
-					urlRoot: '/backbone/c3api/todo',
+					urlRoot: '/backbone/c3api/todo/',
 					url: function() {
 						if (this.isNew()) {
-							return this.urlRoot + '/';
+							return this.urlRoot;
 						} else {
-							return this.urlRoot + '/' + this.id;
+							return this.urlRoot + this.id + '/';
 						}
 					},
 					toggle: function() {
@@ -86,7 +86,7 @@
 				//storing the models in a localstore (maintained by the browser) - this is what the extra library include is for
 				ToDoApp.ToDoList = Backbone.Collection.extend({
 					model: ToDoApp.ToDo,
-					url: '/backbone/c3api/todo',
+					url: '/backbone/c3api/todo/',
 
 					//filters on the data, used for the router
 					completed: function() {
