@@ -17,6 +17,8 @@ from django.conf.urls import include, url
 from django.contrib import admin
 
 urlpatterns = [
+	url(r'^', include('vertebrae.urls', namespace='vertebrae')), #so that you actually see something against the base url - change as needed
     url(r'^admin/', include(admin.site.urls)),
 	url(r'^backbone/', include('vertebrae.urls', namespace='vertebrae')),
+	url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]

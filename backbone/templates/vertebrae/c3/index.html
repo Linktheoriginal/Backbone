@@ -8,7 +8,6 @@
 		<script src="{% static "vertebrae/jquery-1.11.3.js" %}"></script>
 		<script src="{% static "vertebrae/underscore-1.8.3.js" %}"></script>
 		<script src="{% static "vertebrae/backbone-1.2.3.js" %}"></script>
-		<script src="{% static "vertebrae/backbonelocalstorage-1.1.16.js" %}"></script>
 		<!-- ignore the bracket + percent symbol tags, used for Django, not related to backbone -->
 		<!-- this example is using local storage instead of a database - and requires the local storage library -->
 	</head>
@@ -71,9 +70,13 @@
 				//first we extend a model to keep our data in
 				//this is a single to do list item, and if it's been checked
 				ToDoApp.ToDo = Backbone.Model.extend({
-					defaults: {
-						title: '',
-						completed: false
+					urlRoot: '/backbone/c3api/todo',
+					url: function() {
+						if (this.isNew()) {
+							return this.urlRoot + '/';
+						} else {
+							return this.urlRoot + '/' + this.id;
+						}
 					},
 					toggle: function() {
 						this.save({completed: !this.get('completed')})
@@ -83,7 +86,7 @@
 				//storing the models in a localstore (maintained by the browser) - this is what the extra library include is for
 				ToDoApp.ToDoList = Backbone.Collection.extend({
 					model: ToDoApp.ToDo,
-					localStorage: new Store("backbone-todo"),
+					url: '/backbone/c3api/todo',
 
 					//filters on the data, used for the router
 					completed: function() {
@@ -242,8 +245,17 @@
 					//setup the router
 					ToDoApp.routes = new ToDoApp.Router();
 					Backbone.history.start();
+
+
+					///DJANGO CROSS-SITE REQUEST FORGERY STUFF
+					//because backbone sends post/put data via JSON instead of a form post, we send a value from the server back on the header to verify
+					var csrfToken = $('input[name=csrfmiddlewaretoken]').val();
+					$(document).ajaxSend(function(e, xhr, settings) {
+						xhr.setRequestHeader('X-CSRFToken', csrfToken);
+					});
 				});
 
 		</script>
+		{% csrf_token %}
 	</body>
 </html>
