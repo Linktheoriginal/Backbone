@@ -83,7 +83,6 @@
 					}
 				});
 
-				//storing the models in a localstore (maintained by the browser) - this is what the extra library include is for
 				ToDoApp.ToDoList = Backbone.Collection.extend({
 					model: ToDoApp.ToDo,
 					url: '/backbone/c3api/todo/',
@@ -99,7 +98,6 @@
 					}
 				});
 
-				//init a var in our app with the data store
 				ToDoApp.list = new ToDoApp.ToDoList();
 
 			/* VIEW STUFF */

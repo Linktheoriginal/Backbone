@@ -14,7 +14,3 @@ class GroupViewSet(viewsets.ModelViewSet):
 class ToDoItemViewSet(viewsets.ModelViewSet):
 	queryset = ToDoItem.objects.all()
 	serializer_class = ToDoItemSerializer
-
-class ProductViewSet(viewsets.ModelViewSet):
-	queryset = Product.objects.all()
-	serializer_class = ProductSerializer

@@ -26,9 +26,3 @@ class ToDoItemSerializer(serializers.HyperlinkedModelSerializer):
 		extra_kwargs = {'url': {'view_name': 'vertebrae:todoitem-detail'}}
 		model = ToDoItem
 		fields = ('url', 'title', 'completed', 'id')
-
-class ProductSerializer(serializers.HyperlinkedModelSerializer):
-	class Meta:
-		extra_kwargs = {'url': {'view_name': 'vertebrae:product-detail'}}
-		model = Product
-		fields = ('url', 'sku', 'description', 'id', 'price')

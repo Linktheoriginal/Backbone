@@ -8,7 +8,203 @@
 		<script src="{% static "vertebrae/jquery-1.11.3.js" %}"></script>
 		<script src="{% static "vertebrae/underscore-1.8.3.js" %}"></script>
 		<script src="{% static "vertebrae/backbone-1.2.3.js" %}"></script>
+		<!-- ignore the bracket + percent symbol tags, used for Django, not related to backbone -->
 	</head>
 	<body>
+		<!-- Framework HTML for page- rendered on pageload. -->
+		<section id="productsearch">
+			<header id="header">
+				<h1>Product Search</h1>
+				<label for="sku_search">Search For:</label><input id="sku_search" placeholder="Search" autofocus>
+				<label for="more_than">More Than:</label><input id="more_than" placeholder="More Than">
+				<label for="less_than">Less Than:</label><input id="less_than" placeholder="Less Than">
+			</header>
+			<section id="main">
+				<ul id="search_list"></ul>
+			</section>
+			<section id="filters">
+				<ul>
+					<li><a href="#">Clear Price Filter</a></li>
+					<li><a href="#/search&less=100">Less Than $100</a></li>
+					<li><a href="#/search&more=100&less=200">$100 - $200</a></li>
+					<li><a href="#/search&more=200">More Than $200</a></li>
+				</ul>
+			</section>
+		</section>
+
+		<section id="cart">
+			<header id="header">
+				<h1>Cart</h1>
+			</header>
+			<section id="main">
+				<ul id="cart_list"></ul>
+			</section>
+			<section id="carttotal">
+			</section>
+		</section>
+
+		<!-- script of type template?  this is common in JS template frameworks.  ignored by browser. -->
+		<script type="text/template" id="search-template">
+			<div id="<%='search-productid-' + id%>" class="sku-list-item">
+				<label class="label sku"><%-sku%></label>
+				<p class="description"><%-description%></p>
+				<label class="label price"><%-price%></label>
+				<button class="cartadd">Add To Cart</button>
+			</div>
+		</script>
+
+		<script type="text/template" id="cart-template">
+			<div id="<%='cart-productid-' + id%>" class="cart-item">
+				<label class="label sku" <%-sku%>>
+				<label class="label price"><%-price%></label>
+				<button class="cartadd">Add To Cart</button>
+			</div>
+		</script>
+
+		<script type="text/javascript">
+			//new app - we're going to extend some backbone classes
+			var ProductSearch = {};
+
+			/* DATA STUFF */
+
+				//first we extend a model to keep our data in
+				ProductSearch.Product = Backbone.Model.extend({
+					urlRoot: '/backbone/c4api/products/',
+					url: function() {
+						if (this.isNew()) {
+							return this.urlRoot;
+						} else {
+							return this.urlRoot + this.id + '/';
+						}
+					}
+				});
+
+				ProductSearch.ProductList = Backbone.Collection.extend({
+					model: ProductSearch.Product,
+					url: '/backbone/c4api/products/',
+
+					//filters on the data, used for the router
+					pricefilter: function(more, less) {
+						return this.filter(function(products, more, less){
+							if (jQuery.isNumeric(products.get('price'))) {
+								if (jQuery.isNumeric(more) && jQuery.isNumeric(less)) {
+									return (products.get('price') > more && products.get('price') < less);
+
+								} else if (!jQuery.isNumeric(more) && jQuery.isNumeric(less)) {
+									return (products.get('price') < less);
+
+								} else if (!jQuery.isNumeric(less) && jQuery.isNumeric(more)) {
+									return (products.get('price') > more && products.get('price') < less);
+								}
+							}
+							//neither less nor more are numeric - return all
+							return true;
+						});
+					},
+					//execute search queries on description field
+					Search: function(query, more, less) {
+						return this.filter(function(products, query) {
+							if (products.get('description').toLowerCase().indexOf(query.toLowerCase()) > -1) {
+								return true;
+							}
+							return false;
+						});
+					}
+				});
+
+				ProductSearch.list = new ProductSearch.ProductList();
+
+			/* VIEW STUFF */
+
+				ProductSearch.ProductSearchView = Backbone.View.extend({
+					tagName: 'li',
+					template: _.template($('#search-template').html()),
+
+					render: function() {
+						this.$el.html(this.template(this.model.toJSON()));
+
+						this.label = this.$('.edit');
+
+						return this;
+						//allow for chained calls
+					},
+					initialize: function() {
+						this.model.on('change', this.render, this);
+						this.model.on('destroy', this.remove, this);
+					},
+					events: {
+						//'dblclick label' : 'edit',
+					},
+					edit: function() {
+						this.$el.addClass('editing');
+						this.label.focus();
+					},
+				});
+
+				//now we add a view that iteratively calls the ToDoView for each item
+				ProductSearch.SearchView = Backbone.View.extend({
+					el: '#productsearch',
+					initialize: function(){
+						this.input = this.$('#sku_search');
+						this.more = this.$('#more_than');
+						this.less = this.$('#less_than');
+						ProductSearch.list.on('search', this.DisplaySearchResults, this);
+						ProductSearch.list.fetch();
+					},
+					events: {
+						'keypress #sku_search': 'Search'
+						//jQuery('#new-todo').on('keypress', function(){createToDoOnEnter();});
+					},
+					DisplayProduct: function(product) {
+						var view = new ProductSearch.ProductSearchView({model: product});
+						$('#search_list').append(view.render().el);
+					},
+					Search: function(event) {
+						if ( event.which !== 13 || !this.input.val().trim() ) { // Enter is 13
+							return;
+						}
+						this.DisplaySearchResults();
+					},
+					DisplaySearchResults: function() {
+						this.$('#search_list').html('');
+
+						_.each(ProductSearch.list.Search(this.input.val(), this.more.val(), this.less.val()), ProductSearch.ProductSearchView);
+					}
+				});
+			
+			/* ROUTER STUFF */
+
+				//using backbone routes, set up filters for completed/not completed.
+				ProductSearch.Router = Backbone.Router.extend({
+					routes: {
+						'*search' : 'searchFilter'
+					},
+					searchFilter: function(params) {
+						window.filter = (params == null) ? '' : params.trim();
+						ProductSearch.list.trigger('search');
+					}
+				});
+
+			/* INIT STUFF */
+
+				$(function() {
+					//load the view on pageload!
+					ProductSearch.listView = new ProductSearch.SearchView();
+
+					//setup the router
+					ProductSearch.routes = new ProductSearch.Router();
+					Backbone.history.start();
+
+
+					///DJANGO CROSS-SITE REQUEST FORGERY STUFF
+					//because backbone sends post/put data via JSON instead of a form post, we send a value from the server back on the header to verify
+					var csrfToken = $('input[name=csrfmiddlewaretoken]').val();
+					$(document).ajaxSend(function(e, xhr, settings) {
+						xhr.setRequestHeader('X-CSRFToken', csrfToken);
+					});
+				});
+
+		</script>
+		{% csrf_token %}
 	</body>
 </html>
